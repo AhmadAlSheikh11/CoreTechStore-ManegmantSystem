@@ -30,23 +30,30 @@ public class ProductCatalogScreen {
         VBox root = new VBox(20);
         root.setPadding(new Insets(24, 36, 40, 36));
         root.setStyle("-fx-background-color: " + UIHelper.BG_LAVENDER + ";");
+        root.setAlignment(Pos.TOP_CENTER); // Forces all child panels to align horizontally centered in the screen
 
         // ── Hero banner ───────────────────────────────────────────────────────
-        root.getChildren().add(buildHeroBanner());
+        StackPane heroBanner = buildHeroBanner();
+        heroBanner.setMaxWidth(1100); // Prevents the banner from stretching infinitely on wide screens
+        root.getChildren().add(heroBanner);
 
         // ── Search + filter bar ───────────────────────────────────────────────
-        root.getChildren().add(buildSearchAndFilterBar());
+        HBox searchBar = buildSearchAndFilterBar();
+        searchBar.setMaxWidth(1100);
+        root.getChildren().add(searchBar);
 
         // ── Category chips ────────────────────────────────────────────────────
         categoriesRow = new HBox(12);
-        categoriesRow.setAlignment(Pos.CENTER_LEFT);
+        categoriesRow.setAlignment(Pos.CENTER); // Centered categories row layout
         categoriesRow.setPadding(new Insets(4, 0, 8, 0));
+        categoriesRow.setMaxWidth(1100);
         refreshCategories();
         root.getChildren().add(categoriesRow);
 
         // ── Section header ────────────────────────────────────────────────────
         HBox sectionHeader = new HBox();
-        sectionHeader.setAlignment(Pos.CENTER_LEFT);
+        sectionHeader.setAlignment(Pos.CENTER_LEFT); // Keeps text aligned left relative to its safe container row
+        sectionHeader.setMaxWidth(1100);
         Label sectionTitle = new Label("All Products");
         sectionTitle.setStyle(
                 "-fx-font-size: 17px; -fx-font-weight: bold;" +
@@ -60,6 +67,8 @@ public class ProductCatalogScreen {
         productsGrid.setHgap(20);
         productsGrid.setVgap(20);
         productsGrid.setPadding(new Insets(4, 0, 4, 0));
+        productsGrid.setAlignment(Pos.CENTER); // Centered products cards distribution grid row
+        productsGrid.setMaxWidth(1100);
         root.getChildren().add(productsGrid);
 
         viewLayout = new ScrollPane(root);
@@ -112,7 +121,7 @@ public class ProductCatalogScreen {
 
     private HBox buildSearchAndFilterBar() {
         HBox bar = new HBox(14);
-        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setAlignment(Pos.CENTER); // Centered inner layout row positioning for search and filter elements
         bar.setPadding(new Insets(4, 0, 4, 0));
 
         // Search box
@@ -396,7 +405,6 @@ public class ProductCatalogScreen {
 
     private void executeCartInsert(int productId) {
         int custId = SessionManager.getCurrentCustomer().getCustomerId();
-        // INSERT into Adds_to_Cart; if the row already exists increment SelectedQuantity
         String sql = "INSERT INTO Adds_to_Cart (CustomerID, ProductID, SelectedQuantity) " +
                 "VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE SelectedQuantity = SelectedQuantity + 1";
         System.out.println("[SQL-DAO] Adding product " + productId + " to cart for customer " + custId);

@@ -45,14 +45,39 @@ public class MainController {
         // Brand logo
         HBox brandBox = new HBox(8);
         brandBox.setAlignment(Pos.CENTER_LEFT);
-        Label logoIcon = new Label("⚡");
-        logoIcon.setStyle("-fx-font-size: 18px;");
-        Label logoLabel = new Label("CoreTech Store");
-        logoLabel.setStyle(
+
+        var logoStream = MainController.class.getResourceAsStream("/images/ui/logo.png");
+        if (logoStream != null) {
+            javafx.scene.image.Image logoImg = new javafx.scene.image.Image(logoStream);
+            javafx.scene.image.ImageView logoIcon = new javafx.scene.image.ImageView(logoImg);
+            logoIcon.setFitWidth(24);
+            logoIcon.setFitHeight(24);
+            logoIcon.setPreserveRatio(true);
+            brandBox.getChildren().add(logoIcon);
+        }
+
+        Label lblCore = new Label("Core");
+        lblCore.setStyle(
+                "-fx-text-fill: " + UIHelper.TEXT_DARK + ";" +
+                        "-fx-font-size: 19px; -fx-font-weight: 800; -fx-font-family: 'Segoe UI';"
+        );
+
+        Label lblTech = new Label("Tech");
+        lblTech.setStyle(
                 "-fx-text-fill: " + UIHelper.PURPLE_MAIN + ";" +
                         "-fx-font-size: 19px; -fx-font-weight: 800; -fx-font-family: 'Segoe UI';"
         );
-        brandBox.getChildren().addAll(logoIcon, logoLabel);
+
+        Label lblStore = new Label(" Store");
+        lblStore.setStyle(
+                "-fx-text-fill: " + UIHelper.TEXT_DARK + ";" +
+                        "-fx-font-size: 19px; -fx-font-weight: 800; -fx-font-family: 'Segoe UI';"
+        );
+
+        HBox titleFlow = new HBox(0, lblCore, lblTech, lblStore);
+        titleFlow.setAlignment(Pos.CENTER_LEFT);
+
+        brandBox.getChildren().add(titleFlow);
         HBox.setHgrow(brandBox, Priority.ALWAYS);
 
         // Separator
@@ -102,6 +127,7 @@ public class MainController {
 
         // ── Content Area ─────────────────────────────────────────────────────
         contentArea.setStyle("-fx-background-color: " + UIHelper.BG_LAVENDER + ";");
+        contentArea.setAlignment(Pos.CENTER);
 
         mainLayout.setTop(topBar);
         mainLayout.setLeft(sidebar);
@@ -117,24 +143,32 @@ public class MainController {
         menuHeader.setPadding(new Insets(0, 0, 6, 8));
         sidebar.getChildren().add(menuHeader);
 
-        Button btnBrowse = createSidebarNavButton("🛍️", "Products & Categories");
-        btnBrowse.setOnAction(e -> contentArea.getChildren().setAll(new ProductCatalogScreen(this).getView()));
+        Button btnBrowse = createSidebarNavButton("/images/ui/product.png", "Products & Categories");
+        btnBrowse.setOnAction(e -> {
+            var view = new ProductCatalogScreen(this).getView();
+            if (view instanceof Region) {
+                ((Region) view).setMaxWidth(Double.MAX_VALUE);
+            }
+            contentArea.getChildren().setAll(view);
+        });
         sidebar.getChildren().add(btnBrowse);
 
         if (SessionManager.isGuest()) {
             lblUserStatus.setText("Browsing Anonymously");
             btnAuthAction.setText("Sign In");
-            contentArea.getChildren().setAll(new ProductCatalogScreen(this).getView());
+            var view = new ProductCatalogScreen(this).getView();
+            contentArea.getChildren().setAll(view);
 
         } else if (SessionManager.isCustomer()) {
             lblUserStatus.setText("👤  " + SessionManager.getCurrentCustomer().getFullName());
             btnAuthAction.setText("Sign Out");
 
-            Button btnCart = createSidebarNavButton("🛒", "My Cart");
+            Button btnCart = createSidebarNavButton("/images/ui/cart.png", "My Cart");
             btnCart.setOnAction(e -> contentArea.getChildren().setAll(new TransactionController().getView()));
             sidebar.getChildren().add(btnCart);
 
-            contentArea.getChildren().setAll(new ProductCatalogScreen(this).getView());
+            var view = new ProductCatalogScreen(this).getView();
+            contentArea.getChildren().setAll(view);
 
         } else if (SessionManager.isOwner()) {
             lblUserStatus.setText("🔐  Administrator");
@@ -146,16 +180,17 @@ public class MainController {
             Label adminHeader = UIHelper.sectionLabel("Management");
             adminHeader.setPadding(new Insets(4, 0, 6, 8));
 
-            Button btnWarehouses = createSidebarNavButton("🏭", "Warehouses & Stock");
+            // Updated Admin Sidebar Buttons using your exact image names
+            Button btnWarehouses = createSidebarNavButton("/images/ui/warehouses.png", "Warehouses & Stock");
             btnWarehouses.setOnAction(e -> contentArea.getChildren().setAll(new WarehouseController().getView()));
 
-            Button btnBI = createSidebarNavButton("📊", "Transactions & Warranties");
+            Button btnBI = createSidebarNavButton("/images/ui/transaction.png", "Transactions & Warranties");
             btnBI.setOnAction(e -> contentArea.getChildren().setAll(new QueryScreen(this).getView()));
 
-            Button btnAddProduct = createSidebarNavButton("➕", "Add New Product");
+            Button btnAddProduct = createSidebarNavButton("/images/ui/add.png", "Add New Product");
             btnAddProduct.setOnAction(e -> contentArea.getChildren().setAll(new AddProductScreen(this).getView()));
 
-            Button btnCustomers = createSidebarNavButton("👥", "Customer Registry");
+            Button btnCustomers = createSidebarNavButton("/images/ui/customer.png", "Customer Registry");
             btnCustomers.setOnAction(e -> contentArea.getChildren().setAll(new CustomerListScreen().getView()));
 
             sidebar.getChildren().addAll(spacer, adminHeader, btnWarehouses, btnBI, btnAddProduct, btnCustomers);
@@ -163,17 +198,28 @@ public class MainController {
         }
     }
 
-    Button createSidebarNavButton(String icon, String title) {
+    Button createSidebarNavButton(String imagePath, String title) {
         HBox content = new HBox(10);
         content.setAlignment(Pos.CENTER_LEFT);
-        Label iconLbl = new Label(icon);
-        iconLbl.setStyle("-fx-font-size: 15px;");
+
+        var stream = MainController.class.getResourceAsStream(imagePath);
+        if (stream != null) {
+            javafx.scene.image.Image img = new javafx.scene.image.Image(stream);
+            javafx.scene.image.ImageView iconView = new javafx.scene.image.ImageView(img);
+            iconView.setFitWidth(16);
+            iconView.setFitHeight(16);
+            iconView.setPreserveRatio(true);
+            content.getChildren().add(iconView);
+        } else {
+            System.err.println("[FX-WARN] Resource not found: " + imagePath);
+        }
+
         Label titleLbl = new Label(title);
         titleLbl.setStyle(
                 "-fx-font-size: 13px; -fx-font-weight: 600; -fx-font-family: 'Segoe UI';" +
                         "-fx-text-fill: " + UIHelper.TEXT_DARK + ";"
         );
-        content.getChildren().addAll(iconLbl, titleLbl);
+        content.getChildren().add(titleLbl);
 
         Button btn = new Button();
         btn.setGraphic(content);

@@ -43,24 +43,43 @@ public class QueryScreen {
                         "-fx-tab-header-background: transparent;"
         );
         tabPane.setTabMinHeight(36);
+        tabPane.setTabDragPolicy(TabPane.TabDragPolicy.FIXED);
 
-        Tab tabFinancial = new Tab("📈  Overview & Revenue");
+        Tab tabFinancial = new Tab("Overview & Revenue");
         tabFinancial.setClosable(false);
         tabFinancial.setContent(buildFinancialTabContent());
 
-        Tab tabAhmad = new Tab("🔍  Recent Order Lookup");
+        Tab tabAhmad = new Tab("Recent Order Lookup");
         tabAhmad.setClosable(false);
         tabAhmad.setContent(buildRecentOrderLookupTabContent());
 
-        Tab tabProducts = new Tab("📦  Product Analysis");
+        Tab tabProducts = new Tab("Product Analysis");
         tabProducts.setClosable(false);
         tabProducts.setContent(buildProductIntelligenceTabContent());
 
-        Tab tabCustomers = new Tab("👥  Customer Auditing");
+        Tab tabCustomers = new Tab("Customer Auditing");
         tabCustomers.setClosable(false);
         tabCustomers.setContent(buildCustomerAuditsTabContent());
 
         tabPane.getTabs().addAll(tabFinancial, tabAhmad, tabProducts, tabCustomers);
+
+        // Apply smooth theme parameters directly onto each individual tab item
+        for (Tab tab : tabPane.getTabs()) {
+            tab.setStyle(
+                    "-fx-background-color: #ffffff;" +
+                            "-fx-text-fill: " + UIHelper.TEXT_DARK + ";" +
+                            "-fx-background-radius: 8px 8px 0px 0px;" +
+                            "-fx-border-color: " + UIHelper.BORDER_LIGHT + ";" +
+                            "-fx-border-width: 1px 1px 0px 1px;" +
+                            "-fx-font-weight: 600;" +
+                            "-fx-font-family: 'Segoe UI';" +
+                            "-fx-font-size: 13px;" +
+                            "-fx-cursor: hand;" +
+                            "-fx-focus-color: transparent;" +
+                            "-fx-faint-focus-color: transparent;"
+            );
+        }
+
         pageContainer.getChildren().add(tabPane);
 
         viewLayout = new ScrollPane(pageContainer);
@@ -74,8 +93,6 @@ public class QueryScreen {
         VBox layout = new VBox(20);
         layout.setPadding(new Insets(20, 0, 0, 0));
 
-        // ── Live metric cards with refresh button ─────────────────────────────
-        // Stored in Labels so they can be updated without rebuilding the whole tab
         Label lblRevenue   = new Label("$0.00");
         Label lblWarranties = new Label("0");
         Label lblBasket    = new Label("0.00");
@@ -93,7 +110,6 @@ public class QueryScreen {
                         "-fx-text-fill: " + UIHelper.AMBER_WARN + "; -fx-font-family: 'Segoe UI';"
         );
 
-        // Helper: fetch live values and update all three labels at once
         Runnable refreshMetrics = () -> {
             double revenue    = TransactionDAO.getCurrentMonthRevenue();
             int    warranties = TransactionDAO.getActiveWarrantiesForLaptops();
@@ -103,18 +119,33 @@ public class QueryScreen {
             lblBasket.setText(String.format("%.2f units", basket));
         };
 
-        // Initial load
         refreshMetrics.run();
 
-        // Refresh button
         Button btnRefresh = UIHelper.secondaryButton("🔄  Refresh Metrics");
         btnRefresh.setOnAction(e -> refreshMetrics.run());
 
-        // Build metric card shells with live labels injected
         VBox card1 = buildLiveMetricCard("💰", "Monthly Revenue",
                 lblRevenue, "Total sales in the current fiscal period");
-        VBox card2 = buildLiveMetricCard("🛡️", "Active Laptop Warranties (Q19)",
+
+        // ── Card 2 Image Stream loader setup ─────────────────────────────────
+        javafx.scene.layout.Region card2IconNode;
+        var warStream = MainController.class.getResourceAsStream("/images/ui/war.png");
+        if (warStream != null) {
+            javafx.scene.image.Image warImg = new javafx.scene.image.Image(warStream);
+            javafx.scene.image.ImageView warIconView = new javafx.scene.image.ImageView(warImg);
+            warIconView.setFitWidth(18);
+            warIconView.setFitHeight(18);
+            warIconView.setPreserveRatio(true);
+            HBox iconWrapper = new HBox(warIconView);
+            iconWrapper.setAlignment(Pos.CENTER_LEFT);
+            card2IconNode = iconWrapper;
+        } else {
+            card2IconNode = new Label("🛡️");
+        }
+
+        VBox card2 = buildLiveMetricCardWithGraphicNode(card2IconNode, "Active Laptop Warranties",
                 lblWarranties, "Registered warranties for Laptops currently unexpired");
+
         VBox card3 = buildLiveMetricCard("🛒", "Avg Items / Transaction",
                 lblBasket, "Average quantity of distinct items per checkout");
 
@@ -126,10 +157,8 @@ public class QueryScreen {
 
         layout.getChildren().addAll(refreshRow, metricsRow);
 
-        // Tables row
         HBox tablesRow = new HBox(20);
 
-        // Top Products
         VBox topCard = UIHelper.shadowCard();
         Label topTitle = UIHelper.cardTitle("🏆  Top 3 Products by Revenue");
         Label topSub = new Label("Best-performing products across all transactions");
@@ -141,7 +170,6 @@ public class QueryScreen {
         topCard.getChildren().addAll(topTitle, topSub, tblTop);
         HBox.setHgrow(topCard, Priority.ALWAYS);
 
-        // Expiring Warranties
         VBox expCard = UIHelper.shadowCard();
         Label expTitle = UIHelper.cardTitle("⏰  Warranties Expiring in 30 Days");
         Label expSub = new Label("Contact these customers before their coverage lapses");
@@ -156,7 +184,6 @@ public class QueryScreen {
         tablesRow.getChildren().addAll(topCard, expCard);
         layout.getChildren().add(tablesRow);
 
-        // High-value transactions
         VBox highCard = UIHelper.shadowCard();
         Label highTitle = UIHelper.cardTitle("💎  High-Value Transactions  —  Over $500");
         Label highSub = new Label("Sorted by total amount, highest first");
@@ -177,7 +204,6 @@ public class QueryScreen {
         VBox layout = new VBox(16);
         layout.setPadding(new Insets(20, 0, 0, 0));
 
-        // Search card
         VBox searchCard = UIHelper.plainCard();
         Label searchTitle = UIHelper.cardTitle("🔍  Customer Recent Order Lookup");
         Label searchSub = new Label(
@@ -197,7 +223,6 @@ public class QueryScreen {
         searchCard.getChildren().addAll(searchTitle, searchSub, inputRow);
         layout.getChildren().add(searchCard);
 
-        // Results card
         VBox resultsCard = UIHelper.shadowCard();
         Label lblResultTitle = UIHelper.cardTitle("📋  Most Recent Order — Items & Warranties");
 
@@ -313,11 +338,9 @@ public class QueryScreen {
         VBox layout = new VBox(20);
         layout.setPadding(new Insets(20, 0, 0, 0));
 
-        // ── Lookup card ───────────────────────────────────────────────────────
         VBox lookupCard = UIHelper.plainCard();
         Label lblAuditTitle = UIHelper.cardTitle("🔍  Customer Lookup");
 
-        // ID search row
         HBox idRow = new HBox(12);
         idRow.setAlignment(Pos.CENTER_LEFT);
         TextField txtCustId = UIHelper.styledField("Customer ID");
@@ -325,7 +348,6 @@ public class QueryScreen {
         Button btnAudit = UIHelper.primaryButton("Audit Customer");
         idRow.getChildren().addAll(new Label("Customer ID:"), txtCustId, btnAudit);
 
-        // Name search row
         HBox nameRow = new HBox(10);
         nameRow.setAlignment(Pos.CENTER_LEFT);
         nameRow.setPadding(new Insets(8, 0, 0, 0));
@@ -352,7 +374,6 @@ public class QueryScreen {
         lookupCard.getChildren().addAll(lblAuditTitle, idRow, new Separator(), nameRow);
         layout.getChildren().add(lookupCard);
 
-        // ── Results card ──────────────────────────────────────────────────────
         VBox resultsCard = UIHelper.shadowCard();
         Label lblResTitle = UIHelper.cardTitle("📋  Customer Profile & Active Warranties");
 
@@ -372,7 +393,6 @@ public class QueryScreen {
         resultsCard.getChildren().addAll(lblResTitle, lblItems, lblRecent, lblWarTitle, tblWar);
         layout.getChildren().add(resultsCard);
 
-        // ── Verify card ───────────────────────────────────────────────────────
         VBox verifyCard = UIHelper.plainCard();
         Label lblVerTitle = UIHelper.cardTitle("✅  Verify Transaction Item & Warranty");
         Label lblVerSub = new Label("Look up the sale price and warranty end date for a specific product in a transaction.");
@@ -398,7 +418,6 @@ public class QueryScreen {
         verifyCard.getChildren().addAll(lblVerTitle, lblVerSub, verifyRow);
         layout.getChildren().add(verifyCard);
 
-        // ── Handlers ──────────────────────────────────────────────────────────
         btnVerify.setOnAction(e -> {
             try {
                 int cid = Integer.parseInt(txtCustId.getText().trim());
@@ -428,13 +447,13 @@ public class QueryScreen {
         return layout;
     }
 
-    // ── Live metric card builder ──────────────────────────────────────────────
+    // ── Live metric card builders ──────────────────────────────────────────────
 
-    /**
-     * Builds a metric card whose value label is injected from outside,
-     * allowing the caller to update it on demand without rebuilding the card.
-     */
     private VBox buildLiveMetricCard(String icon, String title, Label valueLabel, String description) {
+        return buildLiveMetricCardWithGraphicNode(new Label(icon), title, valueLabel, description);
+    }
+
+    private VBox buildLiveMetricCardWithGraphicNode(javafx.scene.Node iconNode, String title, Label valueLabel, String description) {
         VBox card = new VBox(6);
         card.setPadding(new Insets(20, 22, 20, 22));
         card.setPrefWidth(270);
@@ -447,14 +466,17 @@ public class QueryScreen {
 
         HBox titleRow = new HBox(8);
         titleRow.setAlignment(Pos.CENTER_LEFT);
-        Label iconLbl = new Label(icon);
-        iconLbl.setStyle("-fx-font-size: 18px;");
+
+        if (iconNode instanceof Label) {
+            ((Label) iconNode).setStyle("-fx-font-size: 18px;");
+        }
+
         Label titleLbl = new Label(title);
         titleLbl.setStyle(
                 "-fx-font-size: 11px; -fx-font-weight: bold;" +
                         "-fx-text-fill: " + UIHelper.TEXT_MUTED + "; -fx-font-family: 'Segoe UI';"
         );
-        titleRow.getChildren().addAll(iconLbl, titleLbl);
+        titleRow.getChildren().addAll(iconNode, titleLbl);
 
         Label descLbl = new Label(description);
         descLbl.setStyle(
