@@ -1,270 +1,426 @@
 package com.example.dbsph4.gui;
 
 import com.example.dbsph4.database.SessionManager;
-import com.example.dbsph4.models.Customer;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.VBox;
-import javafx.scene.layout.HBox;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TableColumn;
-import javafx.scene.layout.StackPane;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
 
 public class MainController {
 
     private BorderPane mainLayout;
-    private StackPane contentArea;
+    public StackPane contentArea;
     private VBox sidebar;
     private HBox topBar;
     private Label lblUserStatus;
-    private Button btnAuthAction; // Dynamic button for Login/Logout
+    private Button btnAuthAction;
 
     public MainController() {
-        System.out.println("[GUI-TRACE] Constructing Public Storefront Dashboard...");
         mainLayout = new BorderPane();
         contentArea = new StackPane();
-        sidebar = new VBox(15);
-        topBar = new HBox(20);
+        sidebar = new VBox(8);
+        topBar = new HBox(16);
 
         buildBaseLayout();
         updateDynamicUIBasedOnRole();
     }
 
-    /**
-     * @return The complete root layout pane to be attached to the Scene in Main.java
-     */
     public BorderPane getView() {
         return mainLayout;
     }
 
-    /**
-     * Builds the static skeleton of the application (Top Bar and Content Panel)
-     */
     private void buildBaseLayout() {
-        // 1. Setup Top Header Bar
-        topBar.setPadding(new Insets(15, 20, 15, 20));
-        topBar.setStyle("-fx-background-color: #1abc9c;"); // Fresh e-commerce look
-        topBar.setAlignment(Pos.CENTER_RIGHT);
+        // ── Top Navigation Bar ───────────────────────────────────────────────
+        topBar.setPadding(new Insets(14, 32, 14, 32));
+        topBar.setStyle(
+                "-fx-background-color: #ffffff;" +
+                        "-fx-border-color: " + UIHelper.BORDER_LIGHT + ";" +
+                        "-fx-border-width: 0 0 1.5px 0;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(124,92,252,0.06), 8, 0, 0, 2);"
+        );
+        topBar.setAlignment(Pos.CENTER);
 
+        // Brand logo
+        HBox brandBox = new HBox(8);
+        brandBox.setAlignment(Pos.CENTER_LEFT);
+        Label logoIcon = new Label("⚡");
+        logoIcon.setStyle("-fx-font-size: 18px;");
         Label logoLabel = new Label("CoreTech Store");
-        logoLabel.setStyle("-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;");
+        logoLabel.setStyle(
+                "-fx-text-fill: " + UIHelper.PURPLE_MAIN + ";" +
+                        "-fx-font-size: 19px; -fx-font-weight: 800; -fx-font-family: 'Segoe UI';"
+        );
+        brandBox.getChildren().addAll(logoIcon, logoLabel);
+        HBox.setHgrow(brandBox, Priority.ALWAYS);
 
-        // Push logo to the left, auth controls to the right
-        HBox logoContainer = new HBox(logoLabel);
-        logoContainer.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(logoContainer, javafx.scene.layout.Priority.ALWAYS);
+        // Separator
+        Separator sep = new Separator(javafx.geometry.Orientation.VERTICAL);
+        sep.setStyle("-fx-background-color: " + UIHelper.BORDER_LIGHT + ";");
 
-        lblUserStatus = new Label("Browsing as: Guest");
-        lblUserStatus.setStyle("-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold;");
+        // User status label
+        lblUserStatus = new Label("Guest Session");
+        lblUserStatus.setStyle(
+                "-fx-text-fill: " + UIHelper.TEXT_BODY + ";" +
+                        "-fx-font-weight: 600; -fx-font-size: 13px; -fx-font-family: 'Segoe UI';"
+        );
 
-        btnAuthAction = new Button("Login / Sign Up");
-        btnAuthAction.setStyle("-fx-background-color: #2c3e50; -fx-text-fill: white; -fx-cursor: hand;");
-        btnAuthAction.setOnAction(e -> triggerLoginWindow());
+        // Auth button
+        btnAuthAction = new Button("Sign In");
+        btnAuthAction.setStyle(
+                "-fx-background-color: transparent; -fx-text-fill: " + UIHelper.PURPLE_MAIN + ";" +
+                        "-fx-border-color: " + UIHelper.PURPLE_MAIN + "; -fx-border-radius: 20px;" +
+                        "-fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 7 18;" +
+                        "-fx-font-family: 'Segoe UI'; -fx-font-size: 13px;" +
+                        "-fx-background-radius: 20px;"
+        );
+        btnAuthAction.setOnAction(e -> handleAuthenticationState());
+        btnAuthAction.setOnMouseEntered(ev -> btnAuthAction.setStyle(
+                "-fx-background-color: " + UIHelper.PURPLE_SOFT + "; -fx-text-fill: " + UIHelper.PURPLE_DARK + ";" +
+                        "-fx-border-color: " + UIHelper.PURPLE_DARK + "; -fx-border-radius: 20px;" +
+                        "-fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 7 18;" +
+                        "-fx-font-family: 'Segoe UI'; -fx-font-size: 13px; -fx-background-radius: 20px;"
+        ));
+        btnAuthAction.setOnMouseExited(ev -> btnAuthAction.setStyle(
+                "-fx-background-color: transparent; -fx-text-fill: " + UIHelper.PURPLE_MAIN + ";" +
+                        "-fx-border-color: " + UIHelper.PURPLE_MAIN + "; -fx-border-radius: 20px;" +
+                        "-fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 7 18;" +
+                        "-fx-font-family: 'Segoe UI'; -fx-font-size: 13px; -fx-background-radius: 20px;"
+        ));
 
-        topBar.getChildren().addAll(logoContainer, lblUserStatus, btnAuthAction);
+        topBar.getChildren().addAll(brandBox, sep, lblUserStatus, btnAuthAction);
 
-        // 2. Setup Sidebar Skeleton
-        sidebar.setPadding(new Insets(20));
-        sidebar.setStyle("-fx-background-color: #2c3e50; -fx-min-width: 220px;");
-        sidebar.setAlignment(Pos.TOP_CENTER);
+        // ── Sidebar ──────────────────────────────────────────────────────────
+        sidebar.setPadding(new Insets(28, 14, 28, 14));
+        sidebar.setStyle(
+                "-fx-background-color: #ffffff;" +
+                        "-fx-border-color: " + UIHelper.BORDER_LIGHT + ";" +
+                        "-fx-border-width: 0 1.5px 0 0;"
+        );
+        sidebar.setPrefWidth(230);
 
-        // 3. Central Content Area
-        contentArea.setStyle("-fx-background-color: #f5f6fa; -fx-padding: 20px;");
+        // ── Content Area ─────────────────────────────────────────────────────
+        contentArea.setStyle("-fx-background-color: " + UIHelper.BG_LAVENDER + ";");
 
-        // Assemble base layout
         mainLayout.setTop(topBar);
         mainLayout.setLeft(sidebar);
         mainLayout.setCenter(contentArea);
     }
 
-    /**
-     * CRITICAL LOGIC: Updates navigation items dynamically depending on the current Session Role
-     */
     public void updateDynamicUIBasedOnRole() {
         sidebar.getChildren().clear();
         contentArea.getChildren().clear();
 
-        // Title for navigation block
-        Label menuTitle = new Label("NAVIGATION MENU");
-        menuTitle.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 0 0 10 0;");
-        sidebar.getChildren().add(menuTitle);
+        // ── Public section ───────────────────────────────────────────────────
+        Label menuHeader = UIHelper.sectionLabel("Marketplace");
+        menuHeader.setPadding(new Insets(0, 0, 6, 8));
+        sidebar.getChildren().add(menuHeader);
 
-        // Standard Buttons visible to everyone
-        Button btnProducts = createNavButton("🛒 Browse Products");
-        Button btnCategories = createNavButton("📂 View Categories");
+        Button btnBrowse = createSidebarNavButton("🛍️", "Products & Categories");
+        btnBrowse.setOnAction(e -> contentArea.getChildren().setAll(new ProductCatalogScreen(this).getView()));
+        sidebar.getChildren().add(btnBrowse);
 
-        // Connect to the actual dynamic database-backed controllers
-        btnProducts.setOnAction(e -> contentArea.getChildren().setAll(new ProductController().getView()));
-        btnCategories.setOnAction(e -> contentArea.getChildren().setAll(new CategoryController().getView()));
-
-        sidebar.getChildren().addAll(btnProducts, btnCategories);
-
-        // Role Specific Rendering
         if (SessionManager.isGuest()) {
-            lblUserStatus.setText("Browsing as: Guest");
-            btnAuthAction.setText("Login / Sign Up");
-
-            // Protected features show restriction warnings for Guest
-            Button btnCart = createNavButton("🔒 My Shopping Cart");
-            Button btnOrders = createNavButton("🔒 Order History");
-
-            btnCart.setOnAction(e -> showGuestRestrictionAlert("View your shopping cart"));
-            btnOrders.setOnAction(e -> showGuestRestrictionAlert("View orders and receipts"));
-
-            sidebar.getChildren().addAll(btnCart, btnOrders);
-            showDefaultCatalogPlaceholder();
+            lblUserStatus.setText("Browsing Anonymously");
+            btnAuthAction.setText("Sign In");
+            contentArea.getChildren().setAll(new ProductCatalogScreen(this).getView());
 
         } else if (SessionManager.isCustomer()) {
-            lblUserStatus.setText("Welcome, " + SessionManager.getCurrentCustomer().getFirstName());
-            btnAuthAction.setText("Logout");
+            lblUserStatus.setText("👤  " + SessionManager.getCurrentCustomer().getFullName());
+            btnAuthAction.setText("Sign Out");
 
-            // Unlocked active features for customer
-            Button btnCart = createNavButton("🛍️ My Shopping Cart");
-            Button btnOrders = createNavButton("📄 My Orders");
-
+            Button btnCart = createSidebarNavButton("🛒", "My Cart");
             btnCart.setOnAction(e -> contentArea.getChildren().setAll(new TransactionController().getView()));
-            btnOrders.setOnAction(e -> contentArea.getChildren().setAll(new Label("Active Customer Invoices Loading (Transactions table)...")));
+            sidebar.getChildren().add(btnCart);
 
-            sidebar.getChildren().addAll(btnCart, btnOrders);
-            showDefaultCatalogPlaceholder();
+            contentArea.getChildren().setAll(new ProductCatalogScreen(this).getView());
 
         } else if (SessionManager.isOwner()) {
-            lblUserStatus.setText("Role: STORE OWNER (Admin)");
-            btnAuthAction.setText("Logout");
+            lblUserStatus.setText("🔐  Administrator");
+            btnAuthAction.setText("Sign Out");
 
-            // Complete Backend Control panel for administrative duties
-            Button btnManageWarehouses = createNavButton("🏭 Manage Warehouses");
-            Button btnGlobalTransactions = createNavButton("📊 Global Sales Reports");
-            Button btnCustomerList = createNavButton("👥 Registered Customers");
+            // Admin section divider
+            Region spacer = new Region();
+            spacer.setPrefHeight(10);
+            Label adminHeader = UIHelper.sectionLabel("Management");
+            adminHeader.setPadding(new Insets(4, 0, 6, 8));
 
-            // Connect UI Components to dynamic controllers and DAOs
-            btnManageWarehouses.setOnAction(e -> contentArea.getChildren().setAll(new WarehouseController().getView()));
+            Button btnWarehouses = createSidebarNavButton("🏭", "Warehouses & Stock");
+            btnWarehouses.setOnAction(e -> contentArea.getChildren().setAll(new WarehouseController().getView()));
 
-            // Refactored Customer List to retrieve data seamlessly using CustomerDAO
-            btnCustomerList.setOnAction(e -> {
-                TableView<Customer> table = new TableView<>();
+            Button btnBI = createSidebarNavButton("📊", "Transactions & Warranties");
+            btnBI.setOnAction(e -> contentArea.getChildren().setAll(new QueryScreen(this).getView()));
 
-                TableColumn<Customer, Integer> cId = new TableColumn<>("ID");
-                cId.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("customerId"));
-                cId.setPrefWidth(60);
+            Button btnAddProduct = createSidebarNavButton("➕", "Add New Product");
+            btnAddProduct.setOnAction(e -> contentArea.getChildren().setAll(new AddProductScreen(this).getView()));
 
-                TableColumn<Customer, String> cName = new TableColumn<>("Full Name");
-                cName.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
-                        cell.getValue().getFirstName() + " " + cell.getValue().getLastName()));
-                cName.setPrefWidth(140);
+            Button btnCustomers = createSidebarNavButton("👥", "Customer Registry");
+            btnCustomers.setOnAction(e -> contentArea.getChildren().setAll(new CustomerListScreen().getView()));
 
-                TableColumn<Customer, String> cEmail = new TableColumn<>("Email");
-                cEmail.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("email"));
-                cEmail.setPrefWidth(180);
-
-                TableColumn<Customer, String> cPhone = new TableColumn<>("Phone");
-                cPhone.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("phone"));
-                cPhone.setPrefWidth(120);
-
-                table.getColumns().addAll(cId, cName, cEmail, cPhone);
-                table.setItems(com.example.dbsph4.dao.CustomerDAO.getAllCustomers()); // Synchronized via DAO
-
-                VBox box = new VBox(10, new Label("👥 Registered Customer Records System"), table);
-                box.setPadding(new Insets(20));
-                contentArea.getChildren().setAll(box);
-            });
-
-            btnGlobalTransactions.setOnAction(e -> {
-                VBox box = new VBox(15);
-                box.setPadding(new Insets(25));
-                box.setAlignment(Pos.TOP_LEFT);
-
-                Label lblTitle = new Label("📊 Administrative Business Intelligence Analytics (20 Queries System)");
-                lblTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
-                box.getChildren().add(lblTitle);
-
-                // Dynamic Display for QUERY 5: Current Month Online Revenue (Enforcing 2026 Context)
-                double currentMonthSales = com.example.dbsph4.dao.TransactionDAO.getCurrentMonthRevenue();
-                Label lblQ5 = new Label("📈 [Query 5] Platform Revenue (Current Month 2026): $" + String.format("%.2f", currentMonthSales));
-                lblQ5.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #27ae60;");
-
-                // Dynamic Display for QUERY 9: Average items per online bill transaction
-                double avgItems = com.example.dbsph4.dao.TransactionDAO.getAverageItemsPerTransaction();
-                Label lblQ9 = new Label("🛒 [Query 9] Average Items Purchased Per Order: " + String.format("%.2f", avgItems) + " units");
-                lblQ9.setStyle("-fx-font-size: 13px; -fx-text-fill: #34495e;");
-
-                // Dynamic Display for QUERY 19: Registered Laptop Warranties Active Status count
-                int activeLaptopWarranties = com.example.dbsph4.dao.TransactionDAO.getActiveWarrantiesForLaptops();
-                Label lblQ19 = new Label("🛡️ [Query 19] Total Active Laptop Warranties: " + activeLaptopWarranties + " registered");
-                lblQ19.setStyle("-fx-font-size: 13px; -fx-text-fill: #2980b9;");
-
-                box.getChildren().addAll(lblQ5, lblQ9, lblQ19);
-
-                // Add sub-list placeholder explaining background traces for remaining queries
-                Label lblInfo = new Label("💡 Note: Remaining targeting queries (Queries 1,2,3,4,6,7,8,10,11,12,13,14,15,17,18,20) " +
-                        "are wired into active row events and execute live console output telemetry upon user clicks.");
-                lblInfo.setStyle("-fx-font-style: italic; -fx-text-fill: #7f8c8d; -fx-padding: 10 0 0 0;");
-                box.getChildren().add(lblInfo);
-
-                contentArea.getChildren().setAll(box);
-            });
-
-            sidebar.getChildren().addAll(btnManageWarehouses, btnGlobalTransactions, btnCustomerList);
-
-            // Administrative opening screen
-            VBox adminBox = new VBox(10);
-            adminBox.setAlignment(Pos.CENTER);
-            Label lblAdmin = new Label("Secure Administrative Central Control Active");
-            lblAdmin.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #c0392b;");
-            adminBox.getChildren().add(lblAdmin);
-            contentArea.getChildren().add(adminBox);
+            sidebar.getChildren().addAll(spacer, adminHeader, btnWarehouses, btnBI, btnAddProduct, btnCustomers);
+            contentArea.getChildren().setAll(new QueryScreen(this).getView());
         }
     }
 
-    /**
-     * Helper to style navigation buttons consistently
-     */
-    private Button createNavButton(String text) {
-        Button btn = new Button(text);
+    Button createSidebarNavButton(String icon, String title) {
+        HBox content = new HBox(10);
+        content.setAlignment(Pos.CENTER_LEFT);
+        Label iconLbl = new Label(icon);
+        iconLbl.setStyle("-fx-font-size: 15px;");
+        Label titleLbl = new Label(title);
+        titleLbl.setStyle(
+                "-fx-font-size: 13px; -fx-font-weight: 600; -fx-font-family: 'Segoe UI';" +
+                        "-fx-text-fill: " + UIHelper.TEXT_DARK + ";"
+        );
+        content.getChildren().addAll(iconLbl, titleLbl);
+
+        Button btn = new Button();
+        btn.setGraphic(content);
         btn.setMaxWidth(Double.MAX_VALUE);
-        btn.setStyle("-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-size: 13px; -fx-cursor: hand; -fx-alignment: center-left; -fx-padding: 10px;");
-        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #1abc9c; -fx-text-fill: white; -fx-font-size: 13px; -fx-cursor: hand; -fx-alignment: center-left; -fx-padding: 10px;"));
-        btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-size: 13px; -fx-cursor: hand; -fx-alignment: center-left; -fx-padding: 10px;"));
+        String baseStyle =
+                "-fx-background-color: transparent; -fx-alignment: center-left;" +
+                        "-fx-padding: 10 14; -fx-background-radius: 10; -fx-cursor: hand;" +
+                        "-fx-border-color: transparent; -fx-border-radius: 10;";
+        String hoverStyle =
+                "-fx-background-color: " + UIHelper.PURPLE_SOFT + "; -fx-alignment: center-left;" +
+                        "-fx-padding: 10 14; -fx-background-radius: 10; -fx-cursor: hand;" +
+                        "-fx-border-color: transparent; -fx-border-radius: 10;";
+
+        btn.setStyle(baseStyle);
+        btn.setOnMouseEntered(e -> {
+            btn.setStyle(hoverStyle);
+            titleLbl.setStyle(
+                    "-fx-font-size: 13px; -fx-font-weight: 600; -fx-font-family: 'Segoe UI';" +
+                            "-fx-text-fill: " + UIHelper.PURPLE_MAIN + ";"
+            );
+        });
+        btn.setOnMouseExited(e -> {
+            btn.setStyle(baseStyle);
+            titleLbl.setStyle(
+                    "-fx-font-size: 13px; -fx-font-weight: 600; -fx-font-family: 'Segoe UI';" +
+                            "-fx-text-fill: " + UIHelper.TEXT_DARK + ";"
+            );
+        });
         return btn;
     }
 
-    private void showGuestRestrictionAlert(String operation) {
-        contentArea.getChildren().clear();
-        VBox alertBox = new VBox(15);
-        alertBox.setAlignment(Pos.CENTER);
-        Label msg = new Label("Access Denied: Action Requires Authentication");
-        msg.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #e74c3c;");
-        Label subMsg = new Label("To " + operation + ", you must log into a registered account.");
-        subMsg.setStyle("-fx-font-size: 13px; -fx-text-fill: #7f8c8d;");
-        alertBox.getChildren().addAll(msg, subMsg);
-        contentArea.getChildren().add(alertBox);
-    }
-
-    private void showDefaultCatalogPlaceholder() {
-        contentArea.getChildren().clear();
-        VBox box = new VBox(10);
-        box.setAlignment(Pos.CENTER);
-        Label title = new Label("🛍️ CoreTech Public Showcase Catalog 🛍️");
-        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
-        Label sub = new Label("All visitors can browse items. Click 'Browse Products' or sign in to access your custom cart.");
-        sub.setStyle("-fx-font-size: 13px; -fx-text-fill: #7f8c8d;");
-        box.getChildren().addAll(title, sub);
-        contentArea.getChildren().add(box);
-    }
-
-    /**
-     * Logic routing to authentication module
-     */
-    private void triggerLoginWindow() {
+    private void handleAuthenticationState() {
         if (!SessionManager.isGuest()) {
             SessionManager.logout();
             updateDynamicUIBasedOnRole();
         } else {
-            System.out.println("[GUI-TRACE] Injecting Login Module interface into content panel.");
-            contentArea.getChildren().setAll(new LoginController(this).getView());
+            contentArea.getChildren().setAll(new LoginView());
+        }
+    }
+
+    // ═══ Login View ══════════════════════════════════════════════════════════
+
+    public class LoginView extends VBox {
+        private TextField txtEmail;
+        private PasswordField txtPassword;
+        private Label lblStatus;
+
+        public LoginView() {
+            super(18);
+            setPadding(new Insets(40));
+            setAlignment(Pos.CENTER);
+            setMaxWidth(440);
+            setStyle(
+                    "-fx-background-color: " + UIHelper.CARD_WHITE + ";" +
+                            "-fx-background-radius: 24px;" +
+                            "-fx-effect: dropshadow(gaussian, rgba(124,92,252,0.12), 20, 0, 0, 6);"
+            );
+
+            // Header
+            Text title = UIHelper.pageTitle("Welcome Back");
+            Text subtitle = UIHelper.pageSubtitle("Sign in to your CoreTech account");
+
+            // Fields
+            txtEmail = UIHelper.styledField("your@email.com");
+            VBox emailGroup = UIHelper.fieldGroup("EMAIL ADDRESS", txtEmail);
+
+            txtPassword = new PasswordField();
+            txtPassword.setPromptText("••••••••");
+            applyPasswordStyle(txtPassword, false);
+            txtPassword.focusedProperty().addListener((o, w, f) -> applyPasswordStyle(txtPassword, f));
+            VBox passwordGroup = UIHelper.fieldGroup("PASSWORD", txtPassword);
+
+            lblStatus = new Label("");
+            lblStatus.setWrapText(true);
+            lblStatus.setStyle("-fx-font-size: 12px; -fx-font-family: 'Segoe UI';");
+
+            Button btnSignIn = UIHelper.amazonGoldButton("Sign In to Account");
+            btnSignIn.setMaxWidth(Double.MAX_VALUE);
+            btnSignIn.setOnAction(e -> handleLoginSecurityWorkflow());
+
+            Separator sep = new Separator();
+
+            Label lblPrompt = new Label("New to CoreTech?");
+            lblPrompt.setStyle("-fx-text-fill: " + UIHelper.TEXT_MUTED + "; -fx-font-size: 12px;");
+
+            Button btnGoRegister = new Button("Create an Account");
+            btnGoRegister.setStyle(
+                    "-fx-background-color: transparent; -fx-text-fill: " + UIHelper.PURPLE_MAIN + ";" +
+                            "-fx-font-size: 12px; -fx-font-weight: bold; -fx-cursor: hand; -fx-underline: true;"
+            );
+            btnGoRegister.setOnAction(e -> contentArea.getChildren().setAll(new RegisterView()));
+
+            HBox switchRow = new HBox(6, lblPrompt, btnGoRegister);
+            switchRow.setAlignment(Pos.CENTER);
+
+            getChildren().addAll(title, subtitle, emailGroup, passwordGroup, lblStatus, btnSignIn, sep, switchRow);
+        }
+
+        private void applyPasswordStyle(PasswordField f, boolean focused) {
+            f.setStyle(
+                    "-fx-background-color: " + (focused ? "#ffffff" : UIHelper.BG_LAVENDER) + ";" +
+                            "-fx-border-color: " + (focused ? UIHelper.BORDER_FOCUS : UIHelper.BORDER_LIGHT) + ";" +
+                            "-fx-border-radius: 10; -fx-background-radius: 10;" +
+                            "-fx-padding: 10 14 10 14; -fx-font-size: 13px; -fx-font-family: 'Segoe UI';"
+            );
+        }
+
+        private void handleLoginSecurityWorkflow() {
+            String email = txtEmail.getText().trim();
+            String pass = txtPassword.getText();
+
+            if (email.isEmpty() || pass.isEmpty()) {
+                lblStatus.setStyle("-fx-text-fill: " + UIHelper.RED_ERROR + "; -fx-font-weight: bold;");
+                lblStatus.setText("⚠️  Please enter both your email and password.");
+                return;
+            }
+
+            if (email.equals("admin@coretech.com") && pass.equals("admin123")) {
+                SessionManager.loginAsOwner();
+                updateDynamicUIBasedOnRole();
+                return;
+            }
+
+            com.example.dbsph4.models.Customer customer =
+                    com.example.dbsph4.dao.CustomerDAO.authenticateCustomer(email, pass);
+            if (customer != null) {
+                SessionManager.loginAsCustomer(customer);
+                updateDynamicUIBasedOnRole();
+            } else {
+                lblStatus.setStyle("-fx-text-fill: " + UIHelper.RED_ERROR + "; -fx-font-weight: bold;");
+                lblStatus.setText("❌  Invalid email or password. Please try again.");
+            }
+        }
+    }
+
+    // ═══ Register View ════════════════════════════════════════════════════════
+
+    public class RegisterView extends StackPane {
+        public RegisterView() {
+            VBox pageWrapper = new VBox();
+            pageWrapper.setAlignment(Pos.CENTER);
+            pageWrapper.setStyle("-fx-background-color: " + UIHelper.BG_LAVENDER + ";");
+            pageWrapper.setPadding(new Insets(30, 0, 30, 0));
+            VBox.setVgrow(pageWrapper, Priority.ALWAYS);
+
+            VBox card = new VBox(14);
+            card.setAlignment(Pos.CENTER);
+            card.setPadding(new Insets(36, 50, 36, 50));
+            card.setMaxWidth(480);
+            card.setStyle(
+                    "-fx-background-color: #ffffff;" +
+                            "-fx-background-radius: 24px; -fx-border-radius: 24px;" +
+                            "-fx-effect: dropshadow(gaussian, rgba(124,92,252,0.12), 24, 0.2, 0, 6);"
+            );
+
+            Text title = UIHelper.pageTitle("Create Account");
+            Text sub = UIHelper.pageSubtitle("Register to start shopping on CoreTech");
+
+            HBox nameRow = new HBox(12);
+            TextField firstField = UIHelper.styledField("First name");
+            TextField lastField = UIHelper.styledField("Last name");
+            VBox firstBox = UIHelper.fieldGroup("FIRST NAME", firstField);
+            VBox lastBox = UIHelper.fieldGroup("LAST NAME", lastField);
+            HBox.setHgrow(firstBox, Priority.ALWAYS);
+            HBox.setHgrow(lastBox, Priority.ALWAYS);
+            nameRow.getChildren().addAll(firstBox, lastBox);
+
+            TextField emailField = UIHelper.styledField("you@example.com");
+
+            PasswordField passField = new PasswordField();
+            passField.setPromptText("Choose a password");
+            passField.setStyle(
+                    "-fx-background-color: " + UIHelper.BG_LAVENDER + ";" +
+                            "-fx-border-color: " + UIHelper.BORDER_LIGHT + "; -fx-border-radius: 10;" +
+                            "-fx-background-radius: 10; -fx-padding: 10 14; -fx-font-size: 13px;"
+            );
+            VBox passBox = UIHelper.fieldGroup("PASSWORD", passField);
+
+            TextField phoneField = UIHelper.styledField("059-000-0000");
+            TextField addressField = UIHelper.styledField("City, Street Address");
+
+            Label statusLbl = new Label("");
+            statusLbl.setWrapText(true);
+            statusLbl.setStyle("-fx-font-size: 12px; -fx-font-family: 'Segoe UI';");
+
+            Button registerBtn = UIHelper.amazonGoldButton("Create Account");
+            registerBtn.setMaxWidth(Double.MAX_VALUE);
+
+            registerBtn.setOnAction(e -> {
+                String first = firstField.getText().trim();
+                String last = lastField.getText().trim();
+                String email = emailField.getText().trim();
+                String password = passField.getText();
+
+                if (first.isEmpty() || last.isEmpty() || email.isEmpty() || password.isEmpty()) {
+                    statusLbl.setStyle("-fx-text-fill: " + UIHelper.RED_ERROR + "; -fx-font-weight: bold;");
+                    statusLbl.setText("⚠️  Please fill in all required fields.");
+                    return;
+                }
+                if (!email.contains("@")) {
+                    statusLbl.setStyle("-fx-text-fill: " + UIHelper.RED_ERROR + "; -fx-font-weight: bold;");
+                    statusLbl.setText("⚠️  Please enter a valid email address.");
+                    return;
+                }
+
+                com.example.dbsph4.models.Customer newCustomer = new com.example.dbsph4.models.Customer(
+                        first, last, email, password,
+                        phoneField.getText().trim(), addressField.getText().trim()
+                );
+
+                boolean success = com.example.dbsph4.dao.CustomerDAO.registerCustomer(newCustomer);
+                if (success) {
+                    statusLbl.setStyle("-fx-text-fill: " + UIHelper.GREEN_SUCCESS + "; -fx-font-weight: bold;");
+                    statusLbl.setText("✅  Account created! You can now sign in.");
+                } else {
+                    statusLbl.setStyle("-fx-text-fill: " + UIHelper.RED_ERROR + "; -fx-font-weight: bold;");
+                    statusLbl.setText("❌  Registration failed — that email may already be in use.");
+                }
+            });
+
+            Separator sep = new Separator();
+
+            Label loginPrompt = new Label("Already registered?");
+            loginPrompt.setStyle("-fx-text-fill: " + UIHelper.TEXT_MUTED + "; -fx-font-size: 12px;");
+
+            Button toLogin = new Button("Sign In");
+            toLogin.setStyle(
+                    "-fx-background-color: transparent; -fx-text-fill: " + UIHelper.PURPLE_MAIN + ";" +
+                            "-fx-font-size: 13px; -fx-font-weight: bold; -fx-cursor: hand; -fx-underline: true;"
+            );
+            toLogin.setOnAction(e -> contentArea.getChildren().setAll(new LoginView()));
+
+            HBox switchRow = new HBox(6, loginPrompt, toLogin);
+            switchRow.setAlignment(Pos.CENTER);
+
+            card.getChildren().addAll(
+                    title, sub, nameRow,
+                    UIHelper.fieldGroup("EMAIL ADDRESS", emailField),
+                    passBox,
+                    UIHelper.fieldGroup("CONTACT PHONE", phoneField),
+                    UIHelper.fieldGroup("SHIPPING ADDRESS", addressField),
+                    statusLbl, registerBtn, sep, switchRow
+            );
+
+            pageWrapper.getChildren().add(card);
+            getChildren().add(pageWrapper);
+            setStyle("-fx-background-color: " + UIHelper.BG_LAVENDER + ";");
         }
     }
 }

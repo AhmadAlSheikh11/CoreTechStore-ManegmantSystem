@@ -4,20 +4,23 @@ public class Category {
     // Private fields representing database columns
     private int categoryId;
     private String categoryName;
+    private int warrantyMonths; // NEW: per-category warranty duration in months
 
     // Default Constructor
     public Category() {
     }
 
     // Constructor without ID (Used for inserting new categories into DB)
-    public Category(String categoryName) {
+    public Category(String categoryName, int warrantyMonths) {
         this.categoryName = categoryName;
+        this.warrantyMonths = warrantyMonths;
     }
 
     // Full Constructor (Used when retrieving data from DB)
-    public Category(int categoryId, String categoryName) {
+    public Category(int categoryId, String categoryName, int warrantyMonths) {
         this.categoryId = categoryId;
         this.categoryName = categoryName;
+        this.warrantyMonths = warrantyMonths;
     }
 
     // Getters and Setters with basic error checking
@@ -45,12 +48,25 @@ public class Category {
         }
     }
 
+    public int getWarrantyMonths() {
+        return warrantyMonths;
+    }
+
+    public void setWarrantyMonths(int warrantyMonths) {
+        if (warrantyMonths >= 0) {
+            this.warrantyMonths = warrantyMonths;
+        } else {
+            System.err.println("[MODULE-ERROR] Warranty months cannot be negative: " + warrantyMonths);
+        }
+    }
+
     // Override toString for clear logging and step-by-step trace
     @Override
     public String toString() {
         return "Category{" +
                 "categoryId=" + categoryId +
                 ", categoryName='" + categoryName + '\'' +
+                ", warrantyMonths=" + warrantyMonths +
                 '}';
     }
 }

@@ -6,49 +6,49 @@ import java.sql.SQLException;
 
 public class DatabaseConnection {
 
-    // Database credentials constants
-    private static final String URL = "jdbc:mysql://localhost:3306/CoreTechStore";
-    private static final String USER = "root";
+    private static final String URL      = "jdbc:mysql://localhost:3306/CoreTechStore";
+    private static final String USER     = "root";
     private static final String PASSWORD = "1230853";
 
     /**
-     * Establishes a connection to the MySQL database.
-     * Includes detailed console tracking for step-by-step error detection.
-     * @return Connection object if successful, null otherwise.
+     * Establishes a connection to the CoreTechStore MySQL database.
+     * Always sets autoCommit = true so that every single-statement write
+     * (INSERT / UPDATE / DELETE) is committed immediately on execution.
+     * Multi-statement transactions (e.g. checkout) must call
+     * conn.setAutoCommit(false) themselves and commit/rollback manually.
+     *
+     * @return an open Connection, or null if the connection fails.
      */
     public static Connection getConnection() {
-        Connection connection = null;
         try {
-            // Step 1: Log the connection attempt
-            System.out.println("[DB-TRACE] Attempting to connect to database: " + URL);
+            System.out.println("[DB-TRACE] Connecting to: " + URL);
+            Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
 
-            // Step 2: Establish connection
-            connection = DriverManager.getConnection(URL, USER, PASSWORD);
+            // ── CRITICAL: guarantee auto-commit for single-statement writes ──
+            conn.setAutoCommit(true);
 
-            // Step 3: Log successful connection
-            System.out.println("[DB-SUCCESS] Successfully connected to CoreTechStore database!");
-
+            System.out.println("[DB-SUCCESS] Connected to CoreTechStore database.");
+            return conn;
         } catch (SQLException e) {
-            // Comprehensive error handling based on course slides
-            System.err.println("[DB-ERROR] Connection failed! Check database status, URL, or credentials.");
-            System.err.println("[DB-ERROR-MESSAGE] " + e.getMessage());
-            System.err.println("[DB-ERROR-CODE] SQL State: " + e.getSQLState() + " | Error Code: " + e.getErrorCode());
-            e.printStackTrace(); // Prints the exact line number of the failure
+            System.err.println("[DB-ERROR] Connection failed — check MySQL status, URL, and credentials.");
+            System.err.println("[DB-ERROR] " + e.getMessage() +
+                    " | SQLState: " + e.getSQLState() +
+                    " | Code: "    + e.getErrorCode());
+            e.printStackTrace();
+            return null;
         }
-        return connection;
     }
 
     /**
      * Safely closes an open database connection.
-     * @param connection The connection object to close.
      */
     public static void closeConnection(Connection connection) {
         if (connection != null) {
             try {
                 connection.close();
-                System.out.println("[DB-TRACE] Database connection closed safely.");
+                System.out.println("[DB-TRACE] Connection closed.");
             } catch (SQLException e) {
-                System.err.println("[DB-ERROR] Failed to close database connection.");
+                System.err.println("[DB-ERROR] Failed to close connection.");
                 e.printStackTrace();
             }
         }

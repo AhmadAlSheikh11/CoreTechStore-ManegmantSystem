@@ -4,20 +4,110 @@ import com.example.dbsph4.database.DatabaseConnection;
 import com.example.dbsph4.models.Warehouse;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-
 import java.sql.*;
 
 public class WarehouseDAO {
 
+    /**
+     * BASE QUERY: Fetch all warehouses — SELECT from Warehouses table.
+     */
     public static ObservableList<Warehouse> getAllWarehouses() {
         ObservableList<Warehouse> list = FXCollections.observableArrayList();
         String query = "SELECT * FROM Warehouses";
-        try (Connection conn = DatabaseConnection.getConnection(); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
+        System.out.println("[SQL-DAO] Fetching all warehouses.");
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
             while (rs.next()) {
-                list.add(new Warehouse(rs.getInt("WarehouseID"), rs.getString("WarehouseName"), rs.getString("Location")));
+                list.add(new Warehouse(
+                        rs.getInt("WarehouseID"),
+                        rs.getString("WarehouseName"),
+                        rs.getString("Location")
+                ));
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+            System.out.println("[SQL-DAO] Loaded " + list.size() + " warehouse(s).");
+        } catch (SQLException e) {
+            System.err.println("[SQL-DAO-ERROR] getAllWarehouses failed: " + e.getMessage());
+            e.printStackTrace();
+        }
         return list;
+    }
+
+    /**
+     * BASE QUERY: Insert a new warehouse — INSERT into Warehouses table.
+     */
+    public static boolean insertWarehouse(String name, String location) {
+        String query = "INSERT INTO Warehouses (WarehouseName, Location) VALUES (?, ?)";
+        System.out.println("[SQL-DAO] Inserting warehouse: " + name + " @ " + location);
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, name);
+            pstmt.setString(2, location);
+            int rows = pstmt.executeUpdate();
+            if (rows > 0) {
+                System.out.println("[SQL-DAO] Warehouse inserted: " + name);
+                return true;
+            }
+            System.err.println("[SQL-DAO-ERROR] INSERT returned 0 rows for warehouse: " + name);
+            return false;
+        } catch (SQLException e) {
+            System.err.println("[SQL-DAO-ERROR] insertWarehouse failed: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * BASE QUERY: Get live stock levels for a warehouse — SELECT from Stored_in.
+     */
+    public static ObservableList<String[]> getStockLevels(int warehouseId) {
+        ObservableList<String[]> list = FXCollections.observableArrayList();
+        String query = "SELECT p.ProductName, s.StockQuantity, p.ProductID " +
+                "FROM Stored_in s JOIN Products p ON s.ProductID = p.ProductID " +
+                "WHERE s.WarehouseID = ?";
+        System.out.println("[SQL-DAO] Fetching stock for warehouse ID: " + warehouseId);
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setInt(1, warehouseId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new String[]{
+                            rs.getString("ProductName"),
+                            String.valueOf(rs.getInt("StockQuantity")),
+                            String.valueOf(rs.getInt("ProductID"))
+                    });
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[SQL-DAO-ERROR] getStockLevels failed: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    /**
+     * BASE QUERY: Update stock quantity for a product in a warehouse — UPDATE Stored_in.
+     */
+    public static boolean updateStockQuantity(int warehouseId, int productId, int newQty) {
+        String query = "UPDATE Stored_in SET StockQuantity = ? WHERE WarehouseID = ? AND ProductID = ?";
+        System.out.println("[SQL-DAO] Updating stock: WH=" + warehouseId + " Prod=" + productId + " Qty=" + newQty);
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setInt(1, newQty);
+            pstmt.setInt(2, warehouseId);
+            pstmt.setInt(3, productId);
+            int rows = pstmt.executeUpdate();
+            if (rows > 0) {
+                System.out.println("[SQL-DAO] Stock updated successfully.");
+                return true;
+            }
+            System.err.println("[SQL-DAO-ERROR] UPDATE returned 0 rows — product/warehouse combination not found.");
+            return false;
+        } catch (SQLException e) {
+            System.err.println("[SQL-DAO-ERROR] updateStockQuantity failed: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 
     /**
@@ -33,7 +123,10 @@ public class WarehouseDAO {
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) return rs.getInt("StockQuantity");
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            System.err.println("[SQL-DAO-ERROR] getSpecificStockQuantity failed: " + e.getMessage());
+            e.printStackTrace();
+        }
         return 0;
     }
 
@@ -52,7 +145,10 @@ public class WarehouseDAO {
             while (rs.next()) {
                 list.add(new String[]{rs.getString("WarehouseName"), rs.getString("ProductName")});
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            System.err.println("[SQL-DAO-ERROR] getOutOfStockProducts failed: " + e.getMessage());
+            e.printStackTrace();
+        }
         return list;
     }
 
@@ -70,7 +166,10 @@ public class WarehouseDAO {
             while (rs.next()) {
                 list.add(new String[]{rs.getString("CategoryName"), String.valueOf(rs.getInt("TotalProds"))});
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            System.err.println("[SQL-DAO-ERROR] getCategoryProductCounts failed: " + e.getMessage());
+            e.printStackTrace();
+        }
         return list;
     }
 
@@ -89,37 +188,10 @@ public class WarehouseDAO {
             while (rs.next()) {
                 list.add(new String[]{rs.getString("ProductName"), String.valueOf(rs.getInt("TotalStock"))});
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            System.err.println("[SQL-DAO-ERROR] getLowestTenStocks failed: " + e.getMessage());
+            e.printStackTrace();
+        }
         return list;
-    }
-
-    public static boolean insertWarehouse(String name, String location) {
-        String query = "INSERT INTO Warehouses (WarehouseName, Location) VALUES (?, ?)";
-        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(query)) {
-            pstmt.setString(1, name); pstmt.setString(2, location);
-            return pstmt.executeUpdate() > 0;
-        } catch (SQLException e) { return false; }
-    }
-
-    public static ObservableList<String[]> getStockLevels(int warehouseId) {
-        ObservableList<String[]> list = FXCollections.observableArrayList();
-        String query = "SELECT p.ProductName, s.StockQuantity, p.ProductID FROM Stored_in s JOIN Products p ON s.ProductID = p.ProductID WHERE s.WarehouseID = ?";
-        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(query)) {
-            pstmt.setInt(1, warehouseId);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(new String[] { rs.getString("ProductName"), String.valueOf(rs.getInt("StockQuantity")), String.valueOf(rs.getInt("ProductID")) });
-                }
-            }
-        } catch (SQLException e) { e.printStackTrace(); }
-        return list;
-    }
-
-    public static boolean updateStockQuantity(int warehouseId, int productId, int newQty) {
-        String query = "UPDATE Stored_in SET StockQuantity = ? WHERE WarehouseID = ? AND ProductID = ?";
-        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(query)) {
-            pstmt.setInt(1, newQty); pstmt.setInt(2, warehouseId); pstmt.setInt(3, productId);
-            return pstmt.executeUpdate() > 0;
-        } catch (SQLException e) { return false; }
     }
 }
